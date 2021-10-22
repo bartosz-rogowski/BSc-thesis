@@ -233,10 +233,10 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 		
 		for p in particles:
 			p.update_position(d_t)
-		# print(f"Sum: {sum}")
+		
 		ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
 		plot_particles(particles, x_max=x_max, y_max=y_max, n_c=n_c_x)
 		camera.snap()
-		# print(f'{d_t:.4f}')
+		
 	animation = camera.animate(interval = 500, blit=False)
 	animation.save('animacja.gif', writer = 'imagemagick')
