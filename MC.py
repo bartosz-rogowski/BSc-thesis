@@ -172,18 +172,18 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 	colors = ['cyan', 'red', 'lime', 'yellow', 'blue', 'orange',  
 			'purple', 'green', 'pink', 'brown', 'magenta', 'gold', 'silver']
 
-	# indices = [0 for i in range(n_c_x*n_c_y)]
-	# cells = [None for i in range(n_c_x*n_c_y)]
-	# for i in range(n_c_x):
-	# 	for j in range(n_c_y):
-	# 		cells[i*n_c_x+j] = (i, j)
+	indices = [0 for i in range(n_c_x*n_c_y)]
+	cells = [None for i in range(n_c_x*n_c_y)]
+	for i in range(n_c_x):
+		for j in range(n_c_y):
+			cells[i*n_c_x+j] = (i, j)
 
 	positions = [None for i in range(N_it*len(particles))]
 	for t_it in range(N_it):
 		v_max = sqrt(particles[0].velocity.x**2 + particles[0].velocity.y**2)
 		# przyporządkowanie cząstki do komórki
-		cell = [ [ [] for y in range(n_c_y) ] for x in range(n_c_x) ]
-		# particles = sorted(particles, key = lambda p: (floor(p.position.x/d_x), floor(p.position.y/d_y) ) )
+		# cell = [ [ [] for y in range(n_c_y) ] for x in range(n_c_x) ]
+		particles = sorted(particles, key = lambda p: (floor(p.position.x/d_x), floor(p.position.y/d_y) ) )
 		# [i_prev, j_prev] = [floor(particles[0].position.x/d_x), floor(particles[0].position.y/d_y)]
 		
 		cell_counter = 0
@@ -242,24 +242,24 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 
 				if i > 0 and i < n_c_x - 1:
 					if j == 0: 
-						solve_wall_collision(x_max, y_max, d_t, cell[i][j], "B")
+						solve_wall_collision(x_max, y_max, d_t, particles[start:end], "B")
 					if j == n_c_y - 1:
-						solve_wall_collision(x_max, y_max, d_t, cell[i][j], "T")
+						solve_wall_collision(x_max, y_max, d_t, particles[start:end], "T")
 
 				if j > 0 and j < n_c_y - 1:
 					if i == 0:
-						solve_wall_collision(x_max, y_max, d_t, cell[i][j], "L")
+						solve_wall_collision(x_max, y_max, d_t, particles[start:end], "L")
 					if i == n_c_x - 1:
-						solve_wall_collision(x_max, y_max, d_t, cell[i][j], "R")
+						solve_wall_collision(x_max, y_max, d_t, particles[start:end], "R")
 				
 				if (i == 0 and j == 0):
-					solve_wall_collision(x_max, y_max, d_t, cell[i][j], "BL")
+					solve_wall_collision(x_max, y_max, d_t, particles[start:end], "BL")
 				if (i == 0 and j == n_c_y - 1):
-					solve_wall_collision(x_max, y_max, d_t, cell[i][j], "TL")
+					solve_wall_collision(x_max, y_max, d_t, particles[start:end], "TL")
 				if (i == n_c_x - 1 and j == 0):
-					solve_wall_collision(x_max, y_max, d_t, cell[i][j], "BR")
+					solve_wall_collision(x_max, y_max, d_t, particles[start:end], "BR")
 				if (i == n_c_x - 1 and j == n_c_y - 1):
-					solve_wall_collision(x_max, y_max, d_t, cell[i][j], "TR")
+					solve_wall_collision(x_max, y_max, d_t, particles[start:end], "TR")
 
 				# l = len(cell[i][j])
 				# print(i, j, l)
