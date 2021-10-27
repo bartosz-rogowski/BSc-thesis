@@ -17,7 +17,7 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 
 	if literal == "L":
 		for p in particles:
-			if p.position.x + p.velocity.x*d_t < 0:
+			if p.position.x + p.velocity.x*d_t <= 0:
 				delta_t = (0 - p.position.x)/p.velocity.x 
 				p.update_position(delta_t)
 				p.velocity.x *= -1
@@ -35,7 +35,7 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 
 	if literal == "T":
 		for p in particles:
-			if p.position.y + p.velocity.y*d_t > y_max:
+			if p.position.y + p.velocity.y*d_t >= y_max:
 				delta_t = (y_max - p.position.y)/p.velocity.y 
 				p.update_position(delta_t)
 				p.velocity.y *= -1
@@ -44,7 +44,7 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 
 	if literal == "TL":
 		for p in particles:
-			if p.position.y + p.velocity.y*d_t > y_max and p.position.x + p.velocity.x*d_t < 0:
+			if p.position.y + p.velocity.y*d_t >= y_max and p.position.x + p.velocity.x*d_t <= 0:
 				if abs(p.position.y - y_max) <= abs(p.position.x - 0):
 					delta_t_1 = (y_max - p.position.y)/p.velocity.y 
 					p.update_position(delta_t_1)
@@ -63,9 +63,9 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 					p.velocity.y *= -1
 					p.update_position(d_t - delta_t_1 - delta_t_2)
 					p.canBeMoved = False
-			elif p.position.y + p.velocity.y*d_t > y_max:
+			elif p.position.y + p.velocity.y*d_t >= y_max:
 				solve_wall_collision(x_max, y_max, d_t, particles, "T")
-			elif p.position.x + p.velocity.x*d_t < 0:
+			elif p.position.x + p.velocity.x*d_t <= 0:
 				solve_wall_collision(x_max, y_max, d_t, particles, "L")
 
 	if literal == "BR":
@@ -161,13 +161,13 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 	d_x = x_max/n_c_x
 	d_y = y_max/n_c_y
 	T = 0.0
-	# fig = plt.figure(figsize=(8,8))
-	# ax = fig.add_subplot()
-	# camera = Camera(fig)
+	fig = plt.figure(figsize=(8,8))
+	ax = fig.add_subplot()
+	camera = Camera(fig)
 
-	# ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
-	# plot_particles(particles, x_max=x_max, y_max=y_max, n_c=n_c_x)
-	# camera.snap()
+	ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
+	plot_particles(particles, x_max=x_max, y_max=y_max, n_c=n_c_x)
+	camera.snap()
 
 	colors = ['cyan', 'red', 'lime', 'yellow', 'blue', 'orange',  
 			'purple', 'green', 'pink', 'brown', 'magenta', 'gold', 'silver']
@@ -183,20 +183,21 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 		v_max = sqrt(particles[0].velocity.x**2 + particles[0].velocity.y**2)
 		# przyporządkowanie cząstki do komórki
 		# cell = [ [ [] for y in range(n_c_y) ] for x in range(n_c_x) ]
-		particles = sorted(particles, key = lambda p: (floor(p.position.x/d_x), floor(p.position.y/d_y) ) )
+		particles = sorted(particles, key = lambda p: (floor(p.position.x/d_x)%n_c_x, floor(p.position.y/d_y)%n_c_y ) )
 		# [i_prev, j_prev] = [floor(particles[0].position.x/d_x), floor(particles[0].position.y/d_y)]
-		
+		# print([(floor(p.position.x/d_x), floor(p.position.y/d_y) ) for p in particles])
+
 		cell_counter = 0
 		for i in range(len(particles)):
 			particles[i].canBeMoved = True
-			particle_cell = ( floor(particles[i].position.x/d_x), floor(particles[i].position.y/d_y) )
+			particle_cell = ( floor(particles[i].position.x/d_x)%n_c_x, floor(particles[i].position.y/d_y)%n_c_y )
 			positions[t_it*len(particles)+i] = (particles[i].position.x, particles[i].position.y)
 			try:
 				while particle_cell != cells[cell_counter]:
 					indices[cell_counter] = i
 					cell_counter += 1
 			except IndexError as e:
-				print(t_it, T, i, cell_counter, (floor(particles[i].position.x/d_x), floor(particles[i].position.y/d_y)))
+				print(t_it, T, i, cell_counter, particle_cell)
 				print([positions[t*len(particles)+i] for t in range(t_it+1)])
 				raise e
 				
@@ -221,7 +222,7 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 			v_max = v if v > v_max else v_max
 
 		#adaptacja kroku czasowego
-		d_t = 0.3*min(d_x, d_y)/v_max
+		d_t = min(d_x, d_y)/v_max
 		T += d_t
 		# print(d_t)
 		# sum = 0
@@ -271,9 +272,9 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 		for p in particles:
 			p.update_position(d_t)
 		
-	# 	ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
-	# 	plot_particles(particles, x_max=x_max, y_max=y_max, n_c=n_c_x)
-	# 	camera.snap()
+		ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
+		plot_particles(particles, x_max=x_max, y_max=y_max, n_c=n_c_x)
+		camera.snap()
 		
-	# animation = camera.animate(interval = 500, blit=False)
-	# animation.save('animacja.gif', writer = 'imagemagick')
+	animation = camera.animate(interval = 500, blit=False)
+	animation.save('animacja.gif', writer = 'imagemagick')
