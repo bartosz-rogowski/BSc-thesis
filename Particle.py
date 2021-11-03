@@ -12,11 +12,16 @@ class Particle:
 		self.position = Position(x_max, y_max)
 		self.velocity = Velocity(speed)
 		self.canBeMoved = True
+		self.r_eff = 0.01
 		self.ID = Particle.id
 		Particle.id+=1
 
 	def print(self):
-		print(f"Pos({self.position.x:.3f}, {self.position.y:.3f}), Vel({self.velocity.x:.4f}, {self.velocity.y:.4f}), = {sqrt(self.velocity.x**2 + self.velocity.y**2)}")
+		print(f"Pos({self.position.x:.3f}, {self.position.y:.3f}), \
+		Vel({self.velocity.x:.4f}, {self.velocity.y:.4f}), = {sqrt(self.velocity.x**2 + self.velocity.y**2)}")
+
+	def get_speed(self):
+		return self.velocity.get_speed()
 
 	def update_position(self, d_t):
 		if self.canBeMoved:

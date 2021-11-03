@@ -4,11 +4,12 @@ from random import randint
 from matplotlib import pyplot as plt
 import time
 from celluloid import Camera
+from tools import pythagoras
 
 def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 	if literal == "R":
 		for p in particles:
-			if p.position.x + p.velocity.x*d_t > x_max:
+			if p.position.x + p.velocity.x*d_t >= x_max:
 				delta_t = (x_max - p.position.x)/p.velocity.x 
 				p.update_position(delta_t)
 				p.velocity.x *= -1
@@ -26,7 +27,7 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 
 	if literal == "B":
 		for p in particles:
-			if p.position.y + p.velocity.y*d_t < 0:
+			if p.position.y + p.velocity.y*d_t <= 0:
 				delta_t = (0 - p.position.y)/p.velocity.y 
 				p.update_position(delta_t)
 				p.velocity.y *= -1
@@ -70,7 +71,7 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 
 	if literal == "BR":
 		for p in particles:
-			if p.position.y + p.velocity.y*d_t < 0 and p.position.x + p.velocity.x*d_t > x_max:
+			if p.position.y + p.velocity.y*d_t <= 0 and p.position.x + p.velocity.x*d_t >= x_max:
 				if abs(0 - p.position.y) <= abs(x_max - p.position.x):
 					delta_t_1 = (0 - p.position.y)/p.velocity.y 
 					p.update_position(delta_t_1)
@@ -89,15 +90,15 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 					p.velocity.y *= -1
 					p.update_position(d_t - delta_t_1 - delta_t_2)
 					p.canBeMoved = False
-			elif p.position.y + p.velocity.y*d_t < 0:
+			elif p.position.y + p.velocity.y*d_t <= 0:
 				solve_wall_collision(x_max, y_max, d_t, particles, "B")
-			elif p.position.x + p.velocity.x*d_t > x_max:
+			elif p.position.x + p.velocity.x*d_t >= x_max:
 				solve_wall_collision(x_max, y_max, d_t, particles, "R")
 
 
 	if literal == "TR":
 		for p in particles:
-			if p.position.y + p.velocity.y*d_t > y_max and p.position.x + p.velocity.x*d_t > x_max:
+			if p.position.y + p.velocity.y*d_t >= y_max and p.position.x + p.velocity.x*d_t >= x_max:
 				if abs(p.position.y - y_max) <= abs(x_max - p.position.x):
 					delta_t_1 = (y_max - p.position.y)/p.velocity.y 
 					p.update_position(delta_t_1)
@@ -116,9 +117,9 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 					p.velocity.y *= -1
 					p.update_position(d_t - delta_t_1 - delta_t_2)
 					p.canBeMoved = False
-			elif p.position.y + p.velocity.y*d_t > y_max:
+			elif p.position.y + p.velocity.y*d_t >= y_max:
 				solve_wall_collision(x_max, y_max, d_t, particles, "T")
-			elif p.position.x + p.velocity.x*d_t > x_max:
+			elif p.position.x + p.velocity.x*d_t >= x_max:
 				solve_wall_collision(x_max, y_max, d_t, particles, "R")
 	if literal == "BL":
 		for p in particles:
@@ -145,6 +146,44 @@ def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 				solve_wall_collision(x_max, y_max, d_t, particles, "B")
 			elif p.position.x + p.velocity.x*d_t < 0: 
 				solve_wall_collision(x_max, y_max, d_t, particles, "L")
+
+
+#######################################################################################
+
+
+def solve_particle_collision(particles, delta_t):
+	collision_candidates = []
+	for p_a in particles:
+		for p_b in particles:
+			if p_a != p_b:
+				r_rel_t = (p_a.position.x - p_b.position.x, p_a.position.y - p_b.position.y)
+				r_rel_delta_t = (
+					(p_a.position.x+p_a.velocity.x*delta_t) - (p_b.position.x+p_b.velocity.x*delta_t),
+					(p_a.position.y+p_a.velocity.y*delta_t) - (p_b.position.y+p_b.velocity.y*delta_t)
+				)
+				v_rel_t = (p_a.velocity.x - p_b.velocity.x, p_a.velocity.y - p_b.velocity.y)
+				v_rel_delta_t = (v_rel_t[0], v_rel_t[1])
+
+				chi = r_rel_t[0]*v_rel_t[0] + r_rel_t[1]*v_rel_t[1]
+				chi *= r_rel_delta_t[0]*v_rel_delta_t[0] + r_rel_delta_t[1]*v_rel_delta_t[1]
+				if chi < 0:
+					delta = (v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2
+					delta -= (v_rel_t[0]**2 + v_rel_t[1]**2) \
+						* ((r_rel_t[0]**2 + r_rel_t[1]**2) - (p_a.r_eff + p_b.r_eff)**2)
+					if delta >= 0: #only then t_o_{1,2} will be real numbers
+						t_o_1 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 - delta) \
+							/ (v_rel_t[0]**2 + v_rel_t[1]**2)
+						t_o_2 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 + delta) \
+							/ (v_rel_t[0]**2 + v_rel_t[1]**2)
+						t_o = min(max(t_o_1, 0), max(t_o_2, delta_t))
+						if t_o > 0 and t_o < delta_t:
+							dist = pythagoras(r_rel_t[0]+v_rel_t[0]*t_o, r_rel_t[1]+v_rel_t[1]*t_o)
+							if dist < 0.01:
+								print(dist)
+
+
+#######################################################################################
+
 
 def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 	'''Kinetic Monte Carlo method
@@ -180,7 +219,8 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 
 	positions = [None for i in range(N_it*len(particles))]
 	for t_it in range(N_it):
-		v_max = sqrt(particles[0].velocity.x**2 + particles[0].velocity.y**2)
+		print(t_it)
+		v_max = particles[0].get_speed()
 		# przyporządkowanie cząstki do komórki
 		# cell = [ [ [] for y in range(n_c_y) ] for x in range(n_c_x) ]
 		particles = sorted(particles, key = lambda p: (floor(p.position.x/d_x)%n_c_x, floor(p.position.y/d_y)%n_c_y ) )
@@ -218,7 +258,7 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 						cell_counter += 1
 
 			#znalezienie maksymalnej prędkości cząsteczki
-			v = sqrt(particles[i].velocity.x**2 + particles[i].velocity.y**2)
+			v = particles[i].get_speed()
 			v_max = v if v > v_max else v_max
 
 		#adaptacja kroku czasowego
@@ -229,9 +269,23 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 		
 		for i in range(n_c_x):
 			for j in range(n_c_y):
-				# I_p, I_k = max(0,i-1), min(n_c_x-1, i+1)
-				# J_p, J_k = max(0,j-1), min(n_c_y-1, j+1)
-				# p_c = [ p for p in cell[I_p:I_k+1][J_p:J_k+1] ]
+				I_k, I_l = max(0,i-1), min(n_c_x-1, i+1)
+				J_k, J_l = max(0,j-1), min(n_c_y-1, j+1)
+				# p_c = [ p for p in cell[I_k:I_l+1][J_k:J_l+1] ]
+				p_c = []
+				for k in range(I_k, I_l+1):
+					for l in range(J_k, J_l+1):
+						idx = k*n_c_y + l
+						if idx == 0:
+							start = 0
+						else:
+							start = indices[idx-1]
+						end = indices[idx]
+						for p in particles[start:end]:
+							p_c.append(p)
+
+						solve_particle_collision(p_c, d_t)
+
 				idx = i*n_c_y + j
 				if idx == 0:
 					start = 0

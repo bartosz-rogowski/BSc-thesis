@@ -5,15 +5,15 @@ from MC import MC
 import time
 Start_timex = time.time()
 
-n = int(2*1e04)
+n = int(2*1e02)
 x_max=4.0
 y_max=4.0
 n_c = 10
-N_it = 40
+N_it = 1
 
 particles = []
 for i in range(n):
-	particles.append(Particle(x_max, y_max, speed=1))
+	particles.append(Particle(x_max, y_max, speed=10))
 	
 for i in range(1):
 	print(i+1)

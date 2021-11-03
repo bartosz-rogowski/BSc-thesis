@@ -1,6 +1,6 @@
 from random import random
-from math import sin, cos, sqrt
-from math import pi
+from math import sin, cos, pi
+from tools import pythagoras
 
 class Velocity:
 	def __init__(self, speed = 10):
@@ -11,7 +11,7 @@ class Velocity:
 		self.y = speed*sin(fi)
 
 	def get_speed(self):
-		return sqrt(self.x**2 + self.y**2)
+		return pythagoras(self.x, self.y)
 	
 	def __add__(self, o):
 		return self.x + o.x, self.y + o.y
