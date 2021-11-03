@@ -12,7 +12,7 @@ class Particle:
 		self.position = Position(x_max, y_max)
 		self.velocity = Velocity(speed)
 		self.canBeMoved = True
-		self.r_eff = 0.01
+		self.r_eff = 0.05
 		self.ID = Particle.id
 		Particle.id+=1
 

@@ -171,15 +171,25 @@ def solve_particle_collision(particles, delta_t):
 					delta -= (v_rel_t[0]**2 + v_rel_t[1]**2) \
 						* ((r_rel_t[0]**2 + r_rel_t[1]**2) - (p_a.r_eff + p_b.r_eff)**2)
 					if delta >= 0: #only then t_o_{1,2} will be real numbers
-						t_o_1 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 - delta) \
+						t_o_1 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 - sqrt(delta)) \
 							/ (v_rel_t[0]**2 + v_rel_t[1]**2)
-						t_o_2 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 + delta) \
+						t_o_2 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 + sqrt(delta)) \
 							/ (v_rel_t[0]**2 + v_rel_t[1]**2)
-						t_o = min(max(t_o_1, 0), max(t_o_2, delta_t))
+						
+						t_o = -1. 
+						if (t_o_1 > 0 and t_o_1 < delta_t) or (t_o_2 > 0 and t_o_2 < delta_t):
+							if t_o_2 >= t_o_1:
+								t_o = t_o_2
+							else:
+								t_o = t_o_1
+
 						if t_o > 0 and t_o < delta_t:
 							dist = pythagoras(r_rel_t[0]+v_rel_t[0]*t_o, r_rel_t[1]+v_rel_t[1]*t_o)
-							if dist < 0.01:
-								print(dist)
+							collision_candidates.append({'pair': (p_a.ID, p_b.ID), 'dist': dist})
+
+	if collision_candidates:				
+		q = min(collision_candidates, key = lambda x:x['dist']) 
+		print(q['pair']) 
 
 
 #######################################################################################
@@ -284,7 +294,7 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 						for p in particles[start:end]:
 							p_c.append(p)
 
-						solve_particle_collision(p_c, d_t)
+				solve_particle_collision(p_c, d_t)
 
 				idx = i*n_c_y + j
 				if idx == 0:
