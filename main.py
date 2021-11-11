@@ -7,11 +7,11 @@ import time
 if __name__ == '__main__':
 	Start_timex = time.time()
 
-	n = int(2*1e02)
+	n = int(9*1e02)
 	x_max=4.0
 	y_max=4.0
 	n_c = 10
-	N_it = 1
+	N_it = 200
 
 	particles = []
 	for i in range(n):
