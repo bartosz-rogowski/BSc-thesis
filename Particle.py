@@ -30,7 +30,7 @@ class Particle:
 			self.position.x += velocity[0]*d_t
 			self.position.y += velocity[1]*d_t
 
-def plot_particles(particles, x_max, y_max, n_c=1):
+def plot_particles(particles, x_max, y_max, n_c_x, n_c_y):
 	pos_X = [p.position.x for p in particles]
 	pos_Y = [p.position.y for p in particles]
 	vel_X = [p.velocity.x for p in particles]
@@ -47,8 +47,9 @@ def plot_particles(particles, x_max, y_max, n_c=1):
 	# for p in particles:                                       
 	# 	ax.annotate(f'{p.ID}', xy=(p.position.x, p.position.y), textcoords='data')
 
-	cell_size = (x_max/n_c, y_max/n_c)
-	for n in range(n_c+1):
+	cell_size = (x_max/n_c_x, y_max/n_c_y)
+	for n in range(n_c_y+1):
 		plt.plot([0, x_max], [n*cell_size[1], n*cell_size[1]], 'k--', linewidth=1)
+	for n in range(n_c_x+1):
 		plt.plot([n*cell_size[0], n*cell_size[0]], [0, y_max], 'k--', linewidth=1)
 	# plt.show()

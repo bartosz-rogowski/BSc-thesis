@@ -241,7 +241,8 @@ def solve_particle_collision(particles, delta_t):
 #######################################################################################
 
 
-def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
+def MC(n_c_x: float, n_c_y: float, N_it: float, x_max: float, y_max: float, \
+	n: float, speed: float):
 	'''Kinetic Monte Carlo method
 
 	Arguments:
@@ -250,8 +251,14 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 		N_it - number of time iterations
 		x_max - numerix box x size
 		y_max - numeric box y size
-		particles - array of particles
+		n - number of particles
+		speed - starting speed of every particle
 	'''
+
+	
+	particles = [None for i in range(n)]
+	for i in range(n):
+		particles[i] = Particle(x_max, y_max, speed=speed)
 	
 	d_x = x_max/n_c_x
 	d_y = y_max/n_c_y
@@ -261,7 +268,7 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 	camera = Camera(fig)
 
 	ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
-	plot_particles(particles, x_max=x_max, y_max=y_max, n_c=n_c_x)
+	plot_particles(particles, x_max=x_max, y_max=y_max, n_c_x=n_c_x, n_c_y=n_c_y)
 	camera.snap()
 
 	colors = ['cyan', 'red', 'lime', 'yellow', 'blue', 'orange',  
@@ -271,9 +278,9 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 	cells = [None for i in range(n_c_x*n_c_y)]
 	for i in range(n_c_x):
 		for j in range(n_c_y):
-			cells[i*n_c_x+j] = (i, j)
+			cells[i*n_c_y+j] = (i, j)
 
-	positions = [None for i in range(N_it*len(particles))]
+	positions = [None for i in range(N_it*n)]
 	for t_it in range(N_it):
 		print(t_it)
 		v_max = particles[0].get_speed()
@@ -289,20 +296,20 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 		# print([(floor(p.position.x/d_x), floor(p.position.y/d_y) ) for p in particles])
 
 		cell_counter = 0
-		for i in range(len(particles)):
+		for i in range(n):
 			particles[i].canBeMoved = True
 			particle_cell = ( 
 				floor(particles[i].position.x/d_x)%n_c_x, 
 				floor(particles[i].position.y/d_y)%n_c_y 
 			)
-			positions[t_it*len(particles)+i] = (particles[i].position.x, particles[i].position.y)
+			positions[t_it*n+i] = (particles[i].position.x, particles[i].position.y)
 			try:
 				while particle_cell != cells[cell_counter]:
 					indices[cell_counter] = i
 					cell_counter += 1
 			except IndexError as e:
 				print(t_it, T, i, cell_counter, particle_cell)
-				print([positions[t*len(particles)+i] for t in range(t_it+1)])
+				print([positions[t*n+i] for t in range(t_it+1)])
 				raise e
 				
 			# i = floor(particles[i].position.x/d_x)
@@ -313,7 +320,7 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 			# 	print(i,j, d_t)
 			# 	raise e
 				
-			if i == len(particles)-1:
+			if i == n-1:
 				if particle_cell == cells[cell_counter]:
 					indices[cell_counter] = i+1
 					cell_counter += 1
@@ -325,11 +332,9 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 			v = particles[i].get_speed()
 			v_max = v if v > v_max else v_max
 
-		#adaptacja kroku czasowego
+		#adapting time step
 		d_t = min(d_x, d_y)/v_max
 		T += d_t
-		# print(d_t)
-		# sum = 0
 		
 		for i in range(n_c_x):
 			for j in range(n_c_y):
@@ -380,39 +385,36 @@ def MC(n_c_x, n_c_y, N_it, x_max, y_max, particles):
 				if (i == n_c_x - 1 and j == n_c_y - 1):
 					solve_wall_collision(x_max, y_max, d_t, particles[start:end], "TR")
 
-				# l = len(cell[i][j])
-				# print(i, j, l)
-				# sum += l
-				# pos_X = [p.position.x for p in cell[i][j]]
-				# pos_Y = [p.position.y for p in cell[i][j]]
-				# plt.plot(pos_X, pos_Y, '.', markersize=2, color=colors[(i*n_c_x+j)%13])
 		
 		for p in particles:
 			p.update_position(d_t)
 		
 		ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
-		plot_particles(particles, x_max=x_max, y_max=y_max, n_c=n_c_x)
+		plot_particles(particles, x_max=x_max, y_max=y_max, n_c_x=n_c_x, n_c_y=n_c_y)
 		camera.snap()
 		
 	animation = camera.animate(interval = 500, blit=False)
 	animation.save('animacja.gif', writer = 'imagemagick')
-	
+
 	BINS = 25*2
 	dv = v_max/BINS
-	n = len(particles)
 	hist_v = [0 for i in range(BINS)]
-	hist_v_2 = [0 for i in range(len(particles))]
+	hist_v_2 = [0 for i in range(n)]
 	j = 0
 	for p in particles:
-		i = floor(p.get_speed()/dv) -1
-		hist_v[i] +=1
+		# i = floor(p.get_speed()/dv) -1
+		# hist_v[i] +=1
 		hist_v_2[j] = p.get_speed()
 		j += 1
 	for i in range(BINS):
 		hist_v[i] /= n
 	plt.close()
 	fig = plt.figure(figsize=(6,6))
-	plt.hist(hist_v_2, bins=BINS)
-	# plt.xlim(-0.2, 10.2)
-	plt.show()
+	plt.hist(hist_v_2, bins=BINS, weights=[1.0/n for _ in range(n)])
+	# plt.xlim(0, 25)
+	# plt.ylim(0, 1)
+	plt.title(f"Velocity histogram for {n} particles with $v_0 = {speed}$")
+	plt.xlabel("velocity")
+	plt.ylabel("probability")
+	plt.savefig('velocity_histogram.png')
 
