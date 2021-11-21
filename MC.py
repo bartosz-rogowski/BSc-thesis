@@ -6,6 +6,7 @@ import time
 from celluloid import Camera
 from tools import *
 
+
 def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 	if literal == "R":
 		for p in particles:
@@ -191,6 +192,7 @@ def collide_particles(p_a: Particle, p_b: Particle, delta_t, t_poca):
 		p_a.canBeMoved = False
 		p_b.canBeMoved = False
 
+
 #######################################################################################
 
 
@@ -233,7 +235,7 @@ def solve_particle_collision(particles, delta_t):
 						t_poca = -( r_rel_t[0]*v_rel_t[0] + r_rel_t[1]*v_rel_t[1] ) \
 							/ (v_rel_t[0]**2 + v_rel_t[1]**2)
 						collision_candidates.append({'pair': (p_a, p_b), 'dist': t_poca})
-	if collision_candidates:				
+	if collision_candidates:
 		partners = min(collision_candidates, key = lambda x:x['dist']) 
 		collide_particles(partners['pair'][0], partners['pair'][1], delta_t, partners['dist']) 
 
@@ -241,8 +243,8 @@ def solve_particle_collision(particles, delta_t):
 #######################################################################################
 
 
-def MC(n_c_x: float, n_c_y: float, N_it: float, x_max: float, y_max: float, \
-	n: float, speed: float):
+def MC(n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
+	n: float, speed: float, mfp_coeff: float, bins_number: int):
 	'''Kinetic Monte Carlo method
 
 	Arguments:
@@ -253,15 +255,19 @@ def MC(n_c_x: float, n_c_y: float, N_it: float, x_max: float, y_max: float, \
 		y_max - numeric box y size
 		n - number of particles
 		speed - starting speed of every particle
+		mfp_coeff - mean free path coefficient 
+		bins_number - number of histogram bins
 	'''
 
-	
-	particles = [None for i in range(n)]
-	for i in range(n):
-		particles[i] = Particle(x_max, y_max, speed=speed)
-	
 	d_x = x_max/n_c_x
 	d_y = y_max/n_c_y
+
+	r_eff = sqrt(speed / (2*pi*mfp_coeff*min(d_x, d_y)*n) )
+	print(f"{r_eff = }")
+	particles = [None for i in range(n)]
+	for i in range(n):
+		particles[i] = Particle(x_max, y_max, speed=speed, r_eff=r_eff)
+	
 	T = 0.0
 	fig = plt.figure(figsize=(8,8))
 	ax = fig.add_subplot()
@@ -282,7 +288,7 @@ def MC(n_c_x: float, n_c_y: float, N_it: float, x_max: float, y_max: float, \
 
 	positions = [None for i in range(N_it*n)]
 	for t_it in range(N_it):
-		print(t_it)
+		print("time iteration:", t_it+1)
 		v_max = particles[0].get_speed()
 		# przyporządkowanie cząstki do komórki
 		# cell = [ [ [] for y in range(n_c_y) ] for x in range(n_c_x) ]
@@ -385,20 +391,28 @@ def MC(n_c_x: float, n_c_y: float, N_it: float, x_max: float, y_max: float, \
 				if (i == n_c_x - 1 and j == n_c_y - 1):
 					solve_wall_collision(x_max, y_max, d_t, particles[start:end], "TR")
 
-		
+		#buffer against particles located out of the numeric box
+		x_min, y_min = 0, 0
 		for p in particles:
 			p.update_position(d_t)
+			if p.position.x > x_max:
+				p.position.x -= 2*abs(p.position.x - x_max)
+			if p.position.y > y_max:
+				p.position.y -= 2*abs(p.position.y - y_max)
+			if p.position.x < x_min:
+				p.position.x += 2*abs(p.position.x - x_min)
+			if p.position.y < y_min:
+				p.position.y += 2*abs(p.position.y - y_min)
 		
 		ax.text(0.48, 1.01, f'T = {T:.3f}', transform=ax.transAxes)
 		plot_particles(particles, x_max=x_max, y_max=y_max, n_c_x=n_c_x, n_c_y=n_c_y)
 		camera.snap()
 		
-	animation = camera.animate(interval = 500, blit=False)
+	animation = camera.animate(interval = 100, blit=False)
 	animation.save('animacja.gif', writer = 'imagemagick')
 
-	BINS = 25*2
-	dv = v_max/BINS
-	hist_v = [0 for i in range(BINS)]
+	dv = v_max/bins_number
+	# hist_v = [0 for i in range(bins_number)]
 	hist_v_2 = [0 for i in range(n)]
 	j = 0
 	for p in particles:
@@ -406,15 +420,16 @@ def MC(n_c_x: float, n_c_y: float, N_it: float, x_max: float, y_max: float, \
 		# hist_v[i] +=1
 		hist_v_2[j] = p.get_speed()
 		j += 1
-	for i in range(BINS):
-		hist_v[i] /= n
+	# for i in range(bins_number):
+	# 	hist_v[i] /= n
 	plt.close()
-	fig = plt.figure(figsize=(6,6))
-	plt.hist(hist_v_2, bins=BINS, weights=[1.0/n for _ in range(n)])
-	# plt.xlim(0, 25)
+	fig = plt.figure(figsize=(7,7))
+	plt.hist(hist_v_2, bins=bins_number, weights=[1.0/n for _ in range(n)])
+	plt.xlim(-0.2, 3.5*speed)
 	# plt.ylim(0, 1)
-	plt.title(f"Velocity histogram for {n} particles with $v_0 = {speed}$")
+	plt.title(f"Velocity histogram for {n:_} particles with $v_0 = {speed}$")
 	plt.xlabel("velocity")
 	plt.ylabel("probability")
+	plt.grid(True)
 	plt.savefig('velocity_histogram.png')
 

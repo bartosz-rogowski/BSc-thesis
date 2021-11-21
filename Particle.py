@@ -8,11 +8,11 @@ from math import sqrt
 
 class Particle:
 	id = 0
-	def __init__(self, x_max=1, y_max=1, speed=10):
+	def __init__(self, x_max, y_max, speed, r_eff):
 		self.position = Position(x_max, y_max)
 		self.velocity = Velocity(speed)
 		self.canBeMoved = True
-		self.r_eff = 0.005
+		self.r_eff = r_eff
 		self.ID = Particle.id
 		Particle.id+=1
 
@@ -38,18 +38,18 @@ def plot_particles(particles, x_max, y_max, n_c_x, n_c_y):
 
 	# plt.quiver(pos_X, pos_Y, vel_X, vel_Y, scale=300, width=0.001)
 	plt.plot(pos_X, pos_Y, 'b.', markersize=2)
-	plt.xlim(-0.2, x_max+0.2)
-	plt.ylim(-0.2, y_max+0.2)
-	# plt.xlim(-1, 1+x_max)
-	# plt.ylim(-1, 1+y_max)
+	# plt.xlim(-0.2, x_max+0.2)
+	# plt.ylim(-0.2, y_max+0.2)
+	plt.xlim(0, x_max)
+	plt.ylim(0, y_max)
 
 	ax = plt.gca()
 	# for p in particles:                                       
 	# 	ax.annotate(f'{p.ID}', xy=(p.position.x, p.position.y), textcoords='data')
 
 	cell_size = (x_max/n_c_x, y_max/n_c_y)
-	for n in range(n_c_y+1):
-		plt.plot([0, x_max], [n*cell_size[1], n*cell_size[1]], 'k--', linewidth=1)
-	for n in range(n_c_x+1):
-		plt.plot([n*cell_size[0], n*cell_size[0]], [0, y_max], 'k--', linewidth=1)
+	# for n in range(n_c_y+1):
+	# 	plt.plot([0, x_max], [n*cell_size[1], n*cell_size[1]], 'k--', linewidth=1)
+	# for n in range(n_c_x+1):
+	# 	plt.plot([n*cell_size[0], n*cell_size[0]], [0, y_max], 'k--', linewidth=1)
 	# plt.show()
