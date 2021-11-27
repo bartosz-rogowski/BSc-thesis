@@ -38,10 +38,10 @@ def plot_particles(particles, x_max, y_max, n_c_x, n_c_y):
 
 	# plt.quiver(pos_X, pos_Y, vel_X, vel_Y, scale=300, width=0.001)
 	plt.plot(pos_X, pos_Y, 'b.', markersize=2)
-	# plt.xlim(-0.2, x_max+0.2)
-	# plt.ylim(-0.2, y_max+0.2)
-	plt.xlim(0, x_max)
-	plt.ylim(0, y_max)
+	plt.xlim(-0.2, x_max+0.2)
+	plt.ylim(-0.2, y_max+0.2)
+	# plt.xlim(0, x_max)
+	# plt.ylim(0, y_max)
 
 	ax = plt.gca()
 	# for p in particles:                                       

@@ -5,7 +5,8 @@ from matplotlib import pyplot as plt
 import time
 from celluloid import Camera
 from tools import *
-
+import multiprocessing as mp
+from threading import Thread, Lock
 
 def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 	if literal == "R":
@@ -242,12 +243,33 @@ def solve_particle_collision(particles, delta_t):
 
 #######################################################################################
 
+def search_and_perform_particles_collisions(particles, i, j, n_c_x, n_c_y, indices, d_t, lock):
+	I_k, I_l = max(0,i-1), min(n_c_x-1, i+1)
+	J_k, J_l = max(0,j-1), min(n_c_y-1, j+1)
+	# p_c = [ p for p in cell[I_k:I_l+1][J_k:J_l+1] ]
+	p_c = []
+	for k in range(I_k, I_l+1):
+		for l in range(J_k, J_l+1):
+			idx = k*n_c_y + l
+			if idx == 0:
+				start = 0
+			else:
+				start = indices[idx-1]
+			end = indices[idx]
+			for p in particles[start:end]:
+				p_c.append(p)
 
-def MC(n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
-	n: float, speed: float, mfp_coeff: float, bins_number: int):
+	# lock.acquire()
+	solve_particle_collision(p_c, d_t)
+	# lock.release()
+
+
+def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
+	speed: float, bins_number: int):
 	'''Kinetic Monte Carlo method
 
 	Arguments:
+		particles - array of generated particles
 		n_c_x - divides x-axis to n_c_x pieces
 		n_c_y - divides x-axis to n_c_y pieces
 		N_it - number of time iterations
@@ -258,15 +280,15 @@ def MC(n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
 		mfp_coeff - mean free path coefficient 
 		bins_number - number of histogram bins
 	'''
-
+	n = len(particles)
 	d_x = x_max/n_c_x
 	d_y = y_max/n_c_y
 
-	r_eff = sqrt(speed / (2*pi*mfp_coeff*min(d_x, d_y)*n) )
-	print(f"{r_eff = }")
-	particles = [None for i in range(n)]
-	for i in range(n):
-		particles[i] = Particle(x_max, y_max, speed=speed, r_eff=r_eff)
+	# r_eff = sqrt(speed / (2*pi*mfp_coeff*min(d_x, d_y)*n) )
+	# print(f"{r_eff = }")
+	# particles = [None for i in range(n)]
+	# for i in range(n):
+	# 	particles[i] = Particle(x_max, y_max, speed=speed, r_eff=r_eff)
 	
 	T = 0.0
 	fig = plt.figure(figsize=(8,8))
@@ -286,7 +308,7 @@ def MC(n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
 		for j in range(n_c_y):
 			cells[i*n_c_y+j] = (i, j)
 
-	positions = [None for i in range(N_it*n)]
+	# positions = [None for i in range(N_it*n)]
 	for t_it in range(N_it):
 		print("time iteration:", t_it+1)
 		v_max = particles[0].get_speed()
@@ -308,14 +330,14 @@ def MC(n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
 				floor(particles[i].position.x/d_x)%n_c_x, 
 				floor(particles[i].position.y/d_y)%n_c_y 
 			)
-			positions[t_it*n+i] = (particles[i].position.x, particles[i].position.y)
+			# positions[t_it*n+i] = (particles[i].position.x, particles[i].position.y)
 			try:
 				while particle_cell != cells[cell_counter]:
 					indices[cell_counter] = i
 					cell_counter += 1
 			except IndexError as e:
 				print(t_it, T, i, cell_counter, particle_cell)
-				print([positions[t*n+i] for t in range(t_it+1)])
+				# print([positions[t*n+i] for t in range(t_it+1)])
 				raise e
 				
 			# i = floor(particles[i].position.x/d_x)
@@ -342,25 +364,34 @@ def MC(n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
 		d_t = min(d_x, d_y)/v_max
 		T += d_t
 		
+		# with mp.Pool(mp.cpu_count()) as pool:
+		# 	for i in range(n_c_x):
+		# 		for j in range(n_c_y):
+		# 			pool.starmap_async(
+		# 				search_and_perform_particles_collisions, 
+		# 				(particles, i, j, n_c_x, n_c_y, indices, d_t)
+		# 			)
+
+		lock = Lock()
+
+		for i in range(n_c_x):
+			threads = []
+			for j in range(n_c_y):
+				search_and_perform_particles_collisions(
+					particles, i, j, n_c_x, n_c_y, indices, d_t, lock
+				)
+				# thread = Thread(
+				# 	target=search_and_perform_particles_collisions, 
+				# 	args=(particles, i, j, n_c_x, n_c_y, indices, d_t, lock)
+				# )
+				# thread.start()
+				# threads.append(thread)
+
+			# for thread in threads:
+			# 	thread.join()
+
 		for i in range(n_c_x):
 			for j in range(n_c_y):
-				I_k, I_l = max(0,i-1), min(n_c_x-1, i+1)
-				J_k, J_l = max(0,j-1), min(n_c_y-1, j+1)
-				# p_c = [ p for p in cell[I_k:I_l+1][J_k:J_l+1] ]
-				p_c = []
-				for k in range(I_k, I_l+1):
-					for l in range(J_k, J_l+1):
-						idx = k*n_c_y + l
-						if idx == 0:
-							start = 0
-						else:
-							start = indices[idx-1]
-						end = indices[idx]
-						for p in particles[start:end]:
-							p_c.append(p)
-
-				solve_particle_collision(p_c, d_t)
-
 				idx = i*n_c_y + j
 				if idx == 0:
 					start = 0
@@ -414,18 +445,18 @@ def MC(n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
 	dv = v_max/bins_number
 	# hist_v = [0 for i in range(bins_number)]
 	hist_v_2 = [0 for i in range(n)]
-	j = 0
-	for p in particles:
+
+	for j, p in enumerate(particles):
 		# i = floor(p.get_speed()/dv) -1
 		# hist_v[i] +=1
 		hist_v_2[j] = p.get_speed()
-		j += 1
+
 	# for i in range(bins_number):
 	# 	hist_v[i] /= n
 	plt.close()
 	fig = plt.figure(figsize=(7,7))
 	plt.hist(hist_v_2, bins=bins_number, weights=[1.0/n for _ in range(n)])
-	plt.xlim(-0.2, 3.5*speed)
+	plt.xlim(-0.2*speed, 3.5*speed)
 	# plt.ylim(0, 1)
 	plt.title(f"Velocity histogram for {n:_} particles with $v_0 = {speed}$")
 	plt.xlabel("velocity")
