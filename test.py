@@ -1,82 +1,64 @@
-from threading import Thread, Lock
-from Particle import Particle
-from math import floor
-import multiprocessing as mp
-import numpy as np
-from time import perf_counter
+from matplotlib import pyplot as plt
+from math import ceil
 
-pi = 3.14
+n_c_x = 16
+n_c_y = 10
 
-def fun(p, delta_t, lock):
-	for p_a in particles:
-		for p_b in particles:
-			if p_a != p_b:
-				p_a.position.x = pi
-				p_b.position.y = -pi
+x_max = 4.0
+y_max = 4.0
+x_min, y_min = 0., 0.
 
-def paraller_plz(particles, i, j, n_c_x, n_c_y, lock):
-	I_k, I_l = max(0,i-1), min(n_c_x-1, i+1)
-	J_k, J_l = max(0,j-1), min(n_c_y-1, j+1)
-	p_c = []
-	for k in range(I_k, I_l+1):
-		for l in range(J_k, J_l+1):
-			for p in particles[:4]:
-				p_c.append(p)
-	lock.acquire()
-	fun(p_c, 0.01, lock)
-	lock.release()
-	print(i, j)
+dx = (x_max - x_min)/n_c_x
+dy = (y_max - y_min)/n_c_y
 
-def analyse(data, i, value, lock):
-	I_k, I_l = max(0,i-1), min(len(data)-1, i+1)
-	p_c = []
-	# for k in range(I_k, I_l+1):
-	lock.acquire()
-	for k in range(I_k, I_l+1):
-		data[k] += value
-	# for p,_ in enumerate(p_c):
-	# 	p_c[p] += value
-	# return data
-	lock.release()
+for n in range(n_c_y+1):
+	plt.plot([x_min, x_max], [n*dy, n*dy], 'k--', linewidth=1)
+for n in range(n_c_x+1):
+	plt.plot([n*dx, n*dx], [y_min, y_max], 'k--', linewidth=1)
 
-if __name__ == "__main__":
-	t1 = perf_counter()
-	n = 2000
-	
-	particles = [None for i in range(n)]
-	for i in range(n):
-		particles[i] = Particle(4, 4, speed=10, r_eff=9e-1)
+ax = plt.gca()
 
-	n_c_x = n_c_y = 10
-	# results = None
-	# with ProcessPoolExecutor(max_workers=mp.cpu_count()) as pool:
-	# 	for i in range(n_c_x):
-	# 		for j in range(n_c_y):
-	# 			# print(i, j)
-	# 			results = pool.map(paraller_plz, (particles, i, j, n_c_x, n_c_y))
-	
+# for i in range(n_c_x):
+# 	for j in range(n_c_y):
+# 		ax.annotate(
+# 			f'{i*n_c_y+j}', 
+# 			xy=( dx*(i+1) -dx/2, dy*(j+1) - dy/2), 
+# 			textcoords='data',
+# 			color = (0., 0., 255/255, 255/255)
+# 		)
 
-	lock = Lock()
-	# arggss = [ (data, i, 2, lock) for i in range(len(data)) ]
+threads = 4
+thread_dx = 3
+color = [
+	'blue',
+	'red',
+	'lime',
+	'magenta',
+	'gold',
+	'black'
+]
 
-	threads = []
-	for i in range(n_c_x):
-		for j in range(n_c_y):
-			# print(i, j)
-			# results = pool.map(paraller_plz, (particles, i, j, n_c_x, n_c_y))
-			thread = Thread(target=paraller_plz, args=(particles, i, j, n_c_x, n_c_y, lock))
-			thread.start()
-			threads.append(thread)
-	for thread in threads:
-		thread.join()
+t = 0
+# while(t*thread_dx*n_c_y < )
+ivy = 0
+for j in range(0, n_c_y, thread_dx):
+	t = 0
+	for i in range(0, n_c_x, thread_dx):
+		I_k, I_l = max(0,i) - i, min(n_c_x-1, i+2) - i
+		J_k, J_l = max(0,j) - j, min(n_c_y-1, j+2) - j
+		# print(f'{j = }, { i = }\t {I_k = }, {I_l = }\t, {J_k = }, {J_l = }')
+		for I in range(I_k, I_l+1):
+			for J in range(J_k, J_l+1):
+				ax.annotate(
+					f'{( (i+I)*(J_l+1) + (J) ) % (n_c_x*thread_dx)  + ivy*n_c_x*thread_dx}', 
+					xy=( dx*(i+I+1) - dx/2, dy*(j+J+1) - dy/2), 
+					textcoords='data',
+					color = color[t%threads],
+					size = 8
+				)
+		t += 1
+	ivy += 1
 
-	bins_number = 100
-	dv = 35/bins_number
-	hist_v = [0 for i in range(bins_number)]
-	for j, p in enumerate(particles):
-		i = floor(p.get_speed()/dv)
-		hist_v[i] +=1
-	
-	print(hist_v)
 
-	print(perf_counter() - t1)
+
+plt.show()
