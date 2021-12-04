@@ -7,6 +7,8 @@ from celluloid import Camera
 from tools import *
 import multiprocessing as mp
 from threading import Thread, Lock
+from scipy.stats import maxwell
+from scipy.signal import hilbert
 
 def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 	if literal == "R":
@@ -265,7 +267,7 @@ def search_and_perform_particles_collisions(particles, i, j, n_c_x, n_c_y, indic
 
 
 def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
-	speed: float, bins_number: int):
+	speed: float, bins_number: int, mode: str):
 	'''Kinetic Monte Carlo method
 
 	Arguments:
@@ -279,6 +281,7 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 		speed - starting speed of every particle
 		mfp_coeff - mean free path coefficient 
 		bins_number - number of histogram bins
+		mode - 1 of 3 available modes: BASIC, SOD, NOH
 	'''
 	n = len(particles)
 	d_x = x_max/n_c_x
@@ -363,6 +366,27 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 		#adapting time step
 		d_t = min(d_x, d_y)/v_max
 		T += d_t
+
+		with open("density.dat", "a+") as file1, open("bulk_velocity.dat", "a+") as file2:
+			for i in range(n_c_x):
+				count = 0
+				v_x = 0
+				for j in range(n_c_y):
+					idx = i*n_c_y + j
+					if idx == 0:
+						start = 0
+					else:
+						start = indices[idx-1]
+					count += indices[idx] - start
+
+					
+					for idx in range(start, indices[idx]):
+						v_x += particles[idx].velocity.x
+					
+				file1.write(f"{i*d_x}\t{count/n_c_y}\n")
+				file2.write(f"{i*d_x}\t{v_x / n_c_y}\n")
+			file1.write("\n\n")
+			file2.write("\n\n")
 		
 		# with mp.Pool(mp.cpu_count()) as pool:
 		# 	for i in range(n_c_x):
@@ -442,25 +466,32 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 	animation = camera.animate(interval = 100, blit=False)
 	animation.save('animacja.gif', writer = 'imagemagick')
 
-	dv = v_max/bins_number
-	# hist_v = [0 for i in range(bins_number)]
-	hist_v_2 = [0 for i in range(n)]
+	if mode == "BASIC":
+		dv = v_max/bins_number
+		# hist_v = [0 for i in range(bins_number)]
+		hist_v_2 = [0 for i in range(n)]
 
-	for j, p in enumerate(particles):
-		# i = floor(p.get_speed()/dv) -1
-		# hist_v[i] +=1
-		hist_v_2[j] = p.get_speed()
+		for j, p in enumerate(particles):
+			# i = floor(p.get_speed()/dv) -1
+			# hist_v[i] +=1
+			hist_v_2[j] = p.get_speed()
 
-	# for i in range(bins_number):
-	# 	hist_v[i] /= n
-	plt.close()
-	fig = plt.figure(figsize=(7,7))
-	plt.hist(hist_v_2, bins=bins_number, weights=[1.0/n for _ in range(n)])
-	plt.xlim(-0.2*speed, 3.5*speed)
-	# plt.ylim(0, 1)
-	plt.title(f"Velocity histogram for {n:_} particles with $v_0 = {speed}$")
-	plt.xlabel("velocity")
-	plt.ylabel("probability")
-	plt.grid(True)
-	plt.savefig('velocity_histogram.png')
+		# for i in range(bins_number):
+		# 	hist_v[i] /= n
+		plt.close()
+		fig = plt.figure(figsize=(7,7))
+		plt.hist(hist_v_2, bins=bins_number, weights=[1.0/n for _ in range(n)])
+
+		# mx = [0.01*i for i in range(3000)]
+		# plt.plot(mx, 0.1*maxwell.pdf(mx, scale = 5.35), label='analytical')
+		# a = maxwell.fit(hist_v_2)
+		# plt.plot(mx, 0.1*maxwell.pdf(mx, scale = a[1]), label='fitted')
+		
+		plt.xlim(-0.2*speed, 3.5*speed)
+		# plt.ylim(0, 1.1*max(hist_v_2)/n)
+		plt.title(f"Velocity histogram for {n:_} particles with $v_0 = {speed}$")
+		plt.xlabel("velocity")
+		plt.ylabel("probability")
+		plt.grid(True)
+		plt.savefig('velocity_histogram.png')
 

@@ -3,14 +3,22 @@ from Position import Position
 from Velocity import Velocity
 from matplotlib import pyplot as plt
 from math import sqrt
-
+from tools import pythagoras
 
 
 class Particle:
 	id = 0
-	def __init__(self, x_max, y_max, speed, r_eff):
-		self.position = Position(x_max, y_max)
-		self.velocity = Velocity(speed)
+	def __init__(self, x_min, y_min, x_max, y_max, speed, r_eff, mode):
+		self.position = Position(x_min, y_min, x_max, y_max)
+		if mode == "BASIC" or mode == "SOD":
+			self.velocity = Velocity(speed)
+
+		elif mode == "NOH":
+			vel = (x_min + x_max/2 - self.position.x, 
+				y_min + y_max/2- self.position.y)
+			norm = pythagoras(vel[0], vel[1])
+			self.velocity = Velocity(speed, x=vel[0]/norm, y=vel[1]/norm)
+
 		self.canBeMoved = True
 		self.r_eff = r_eff
 		self.ID = Particle.id
