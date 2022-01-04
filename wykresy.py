@@ -51,7 +51,11 @@ if __name__ == '__main__':
 
     x = np.linspace(0, 3.5*speed, 2000)
     y = np.zeros(len(x))
+    y2 = np.zeros(len(x))
+    y3 = np.zeros(len(x))
     for i in range(len(x)):
         y[i] = maxwell(x[i], 6.0)
-    plt.plot(x, y)
+        y2[i] = maxwell(x[i], 5.0)
+        y3[i] = maxwell(x[i], 4.0)
+    plt.plot(x, y, x, y2, x, y3)
     plt.show()

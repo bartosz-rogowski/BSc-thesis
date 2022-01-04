@@ -7,8 +7,7 @@ from celluloid import Camera
 from tools import *
 import multiprocessing as mp
 from threading import Thread, Lock
-from scipy.stats import maxwell
-from scipy.signal import hilbert
+import numpy as np
 
 def solve_wall_collision(x_max, y_max, d_t, particles, literal:str):
 	if literal == "R":
@@ -172,12 +171,13 @@ def collide_particles(p_a: Particle, p_b: Particle, delta_t, t_poca):
 		p_21 = (-p_11[0], -p_11[1])
 		v_11 = (p_11[0], p_11[1])
 		v_21 = (p_21[0], p_21[1])
+		
+		p_a.update_position(t_poca)
+		p_b.update_position(t_poca)
 
 		p_a.velocity.x, p_a.velocity.y = v_11[0] + v_cm[0], v_11[1] + v_cm[1]
 		p_b.velocity.x, p_b.velocity.y = v_21[0] + v_cm[0], v_21[1] + v_cm[1]
 
-		p_a.update_position(t_poca)
-		p_b.update_position(t_poca)
 		p_a.update_position(delta_t - t_poca)
 		p_b.update_position(delta_t - t_poca)
 
@@ -237,10 +237,11 @@ def solve_particle_collision(particles, delta_t):
 
 						t_poca = -( r_rel_t[0]*v_rel_t[0] + r_rel_t[1]*v_rel_t[1] ) \
 							/ (v_rel_t[0]**2 + v_rel_t[1]**2)
-						collision_candidates.append({'pair': (p_a, p_b), 'dist': t_poca})
+						collision_candidates.append({'pair': (p_a, p_b), 'crit': t_poca})
 	if collision_candidates:
-		partners = min(collision_candidates, key = lambda x:x['dist']) 
-		collide_particles(partners['pair'][0], partners['pair'][1], delta_t, partners['dist']) 
+		partners = min(collision_candidates, key = lambda x:x['crit']) 
+		collide_particles(partners['pair'][0], partners['pair'][1], delta_t, partners['crit']) 
+	del collision_candidates
 
 
 #######################################################################################
@@ -286,6 +287,11 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 	n = len(particles)
 	d_x = x_max/n_c_x
 	d_y = y_max/n_c_y
+
+	x_min, y_min = 0, 0
+
+	thread_dx = 3
+	mp_count = 4
 
 	# r_eff = sqrt(speed / (2*pi*mfp_coeff*min(d_x, d_y)*n) )
 	# print(f"{r_eff = }")
@@ -367,6 +373,32 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 		d_t = min(d_x, d_y)/v_max
 		T += d_t
 
+		if mode == "NOH":
+			radii = [None for i in range(n)]
+			for i, p in enumerate(particles):
+				radii[i] = sqrt(
+					(p.position.x - (x_min + (x_max - x_min)/2) )**2 + \
+					(p.position.y - (y_min + (y_max - y_min)/2) )**2
+				)
+			radii = sorted(radii)
+
+			with open("density_radial.dat", "a+") as file:
+				o_bins = bins_number
+				dr = sqrt(
+					(x_max - (x_min + (x_max - x_min)/2) )**2 + \
+					(y_max - (y_min + (y_max - y_min)/2) )**2
+				)/o_bins
+
+				i = 0
+				for ir in range(o_bins):
+					r = dr*(ir+1)
+					count = 0
+					while i < n and radii[i] <= r:
+						count += 1
+						i += 1
+					file.write(f"{r}\t{count/(pi*dr**2*(2*ir + 1) ) / 1e7}\n")
+				file.write("\n\n")
+
 		with open("density.dat", "a+") as file1, open("bulk_velocity.dat", "a+") as file2:
 			for i in range(n_c_x):
 				count = 0
@@ -379,30 +411,61 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 						start = indices[idx-1]
 					count += indices[idx] - start
 
-					
-					for idx in range(start, indices[idx]):
-						v_x += particles[idx].velocity.x
+					if mode == "SOD":
+						for idx in range(start, indices[idx]):
+							v_x += particles[idx].velocity.x
 					
 				file1.write(f"{i*d_x}\t{count/n_c_y}\n")
-				file2.write(f"{i*d_x}\t{v_x / n_c_y}\n")
+				if mode == "SOD":
+					file2.write(f"{i*d_x}\t{v_x / count}\n")
 			file1.write("\n\n")
-			file2.write("\n\n")
+			if mode == "SOD":
+				file2.write("\n\n")
 		
-		# with mp.Pool(mp.cpu_count()) as pool:
-		# 	for i in range(n_c_x):
-		# 		for j in range(n_c_y):
-		# 			pool.starmap_async(
-		# 				search_and_perform_particles_collisions, 
-		# 				(particles, i, j, n_c_x, n_c_y, indices, d_t)
-		# 			)
+		# cell2proc = [ [] for i in range(mp_count) ]
+		
+		# for A in range(0, ( (n_c_x) // (thread_dx * mp_count) ) +1):
+		# 	a = A*thread_dx * mp_count
+		# 	for j in range(0, n_c_y, thread_dx):
+		# 		for p in range(mp_count):
+		# 			i = p*thread_dx + a
+		# 			I_k, I_l = max(0,i) - i, min(n_c_x-1, i+2) - i
+		# 			J_k, J_l = max(0,j) - j, min(n_c_y-1, j+2) - j
+		# 			# print(f'{j = }, { i = }\t {I_k = }, {I_l = }\t, {J_k = }, {J_l = }')
+		# 			for I in range(I_k, I_l+1):
+		# 				for J in range(J_k, J_l+1):
+		# 					cell2proc[p].append((i+I+1,j+J+1))
 
-		lock = Lock()
+		# lock = Lock()
+		# for q in range(max(map(len, cell2proc))):
+		# 	threads =[]
+		# 	with mp.Pool(mp.cpu_count()) as pool:
+		# 		for p in range(len(cell2proc)):
+		# 			try:
+		# 				if cell2proc[p][q]:
+		# 					i = cell2proc[p][q][0]
+		# 					j = cell2proc[p][q][1]
+		# 					pool.starmap_async(
+		# 						search_and_perform_particles_collisions, 
+		# 						(particles, i, j, n_c_x, n_c_y, indices, d_t, lock)
+		# 					)
+						# thread = Thread(
+						# 	target=search_and_perform_particles_collisions, 
+						# 	args=(particles, i, j, n_c_x, n_c_y, indices, d_t, lock)
+						# )
+						# thread.start()
+						# threads.append(thread)
+					# except IndexError:
+					# 	pass
+			# for thread in threads:
+			# 	thread.join()
+		# del cell2proc
 
 		for i in range(n_c_x):
 			threads = []
 			for j in range(n_c_y):
 				search_and_perform_particles_collisions(
-					particles, i, j, n_c_x, n_c_y, indices, d_t, lock
+					particles, i, j, n_c_x, n_c_y, indices, d_t, None
 				)
 				# thread = Thread(
 				# 	target=search_and_perform_particles_collisions, 
@@ -447,7 +510,7 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 					solve_wall_collision(x_max, y_max, d_t, particles[start:end], "TR")
 
 		#buffer against particles located out of the numeric box
-		x_min, y_min = 0, 0
+		
 		for p in particles:
 			p.update_position(d_t)
 			if p.position.x > x_max:
@@ -471,27 +534,31 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 		# hist_v = [0 for i in range(bins_number)]
 		hist_v_2 = [0 for i in range(n)]
 
+		a = 0
 		for j, p in enumerate(particles):
 			# i = floor(p.get_speed()/dv) -1
 			# hist_v[i] +=1
 			hist_v_2[j] = p.get_speed()
-
+			a += hist_v_2[j]**2/n
 		# for i in range(bins_number):
 		# 	hist_v[i] /= n
 		plt.close()
 		fig = plt.figure(figsize=(7,7))
-		plt.hist(hist_v_2, bins=bins_number, weights=[1.0/n for _ in range(n)])
+		plt.hist(hist_v_2, bins=bins_number, density=True)
 
-		# mx = [0.01*i for i in range(3000)]
-		# plt.plot(mx, 0.1*maxwell.pdf(mx, scale = 5.35), label='analytical')
-		# a = maxwell.fit(hist_v_2)
-		# plt.plot(mx, 0.1*maxwell.pdf(mx, scale = a[1]), label='fitted')
+		x = np.linspace(0, 3.5*speed, 5000)
+		y_a = [maxwell2d(xx, 1.0/speed**2) for xx in x]
+		y_d = [maxwell2d(xx, 1.0/a) for xx in x]
+		plt.plot(x, y_a, 'r--', markersize=1, label='analytical')
+		plt.plot(x, y_d, 'g--', markersize=1, label='data')
+		print(1.0/a,1.0/speed**2)
 		
 		plt.xlim(-0.2*speed, 3.5*speed)
 		# plt.ylim(0, 1.1*max(hist_v_2)/n)
-		plt.title(f"Velocity histogram for {n:_} particles with $v_0 = {speed}$")
-		plt.xlabel("velocity")
-		plt.ylabel("probability")
+		plt.title(f"Histogram prędkości dla {n:_} cząstek ($v_0 = {speed}, N_{{it}} = {N_it}$)")
+		plt.xlabel("$v$")
+		plt.ylabel("$f(v)$")
 		plt.grid(True)
+		plt.legend()
 		plt.savefig('velocity_histogram.png')
 
