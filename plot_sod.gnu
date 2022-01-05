@@ -17,7 +17,7 @@ do for [k=0:n:1] {
     plot "density.dat" i k u 1:2 w l lw 2 t sprintf("it=%i",k)
 } 
 
-noh = 1
+noh = 0
 if (noh == 0){
     reset
     set term gif size 800, 800 animate delay 100
@@ -25,7 +25,7 @@ if (noh == 0){
     set out 'bulk_velocity.gif'
 
     # set xrange [0:4]
-    set yrange [-3:10]
+    set yrange [-10:100]
     set xlabel "x"
     set ylabel "bulk velocity"
     set title "2D Sod test - bulk velocity"

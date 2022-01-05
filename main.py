@@ -6,19 +6,19 @@ from Particle import Particle
 if __name__ == '__main__':
 	Start_timex = time.time()
 
-	n = int(6*1e04)
+	n = int(9*1e04)
 	x_max = 4.0
 	y_max = 4.0
 	n_c_x = 400
 	n_c_y = 400
-	N_it = 25
-	speed = 20
+	N_it = 10
+	speed = 100
 	mfp_coeff = 1e-1
 	bins_number = 200
 	d_x = x_max/n_c_x
 	d_y = y_max/n_c_y
 	modes = ["BASIC", "SOD", "NOH"]
-	mode = modes[0]
+	mode = modes[1]
 
 	r_eff = x_max*y_max / (2*pi*mfp_coeff*min(d_x, d_y)*n)
 	print(f"{r_eff = }")

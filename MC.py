@@ -300,6 +300,7 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 	# 	particles[i] = Particle(x_max, y_max, speed=speed, r_eff=r_eff)
 	
 	T = 0.0
+	plt.rcParams.update({'font.size': 14})
 	fig = plt.figure(figsize=(8,8))
 	ax = fig.add_subplot()
 	camera = Camera(fig)
@@ -546,15 +547,14 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 		fig = plt.figure(figsize=(7,7))
 		plt.hist(hist_v_2, bins=bins_number, density=True)
 
-		x = np.linspace(0, 3.5*speed, 5000)
+		x = np.linspace(0, 3.5*speed, 200)
 		y_a = [maxwell2d(xx, 1.0/speed**2) for xx in x]
 		y_d = [maxwell2d(xx, 1.0/a) for xx in x]
-		plt.plot(x, y_a, 'r--', markersize=1, label='analytical')
-		plt.plot(x, y_d, 'g--', markersize=1, label='data')
-		print(1.0/a,1.0/speed**2)
+		plt.plot(x, y_a, 'r-.', markersize=0.5, label='rozw. dokładne')
+		# plt.plot(x, y_d, 'g-.', markersize=0.5, label='rozw. numeryczne')
+		# print(1.0/a,1.0/speed**2)
 		
 		plt.xlim(-0.2*speed, 3.5*speed)
-		# plt.ylim(0, 1.1*max(hist_v_2)/n)
 		plt.title(f"Histogram prędkości dla {n:_} cząstek ($v_0 = {speed}, N_{{it}} = {N_it}$)")
 		plt.xlabel("$v$")
 		plt.ylabel("$f(v)$")
