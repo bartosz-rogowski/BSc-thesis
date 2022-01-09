@@ -219,22 +219,6 @@ def solve_particle_collision(particles, delta_t):
 					delta -= (v_rel_t[0]**2 + v_rel_t[1]**2) \
 						* ((r_rel_t[0]**2 + r_rel_t[1]**2) - (p_a.r_eff + p_b.r_eff)**2)
 					if delta >= 0: #only then t_o_{1,2} will be real numbers
-						# t_o_1 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 - sqrt(delta)) \
-						# 	/ (v_rel_t[0]**2 + v_rel_t[1]**2)
-						# t_o_2 = (-(v_rel_t[0]*r_rel_t[0]+v_rel_t[1]*r_rel_t[1])**2 + sqrt(delta)) \
-						# 	/ (v_rel_t[0]**2 + v_rel_t[1]**2)
-						
-						# t_o = -1. 
-						# if (t_o_1 > 0 and t_o_1 < delta_t) or (t_o_2 > 0 and t_o_2 < delta_t):
-						# 	if t_o_2 >= t_o_1:
-						# 		t_o = t_o_2
-						# 	else:
-						# 		t_o = t_o_1
-
-						# if t_o > 0 and t_o < delta_t:
-						# 	dist = pythagoras(r_rel_t[0]+v_rel_t[0]*t_o, r_rel_t[1]+v_rel_t[1]*t_o)
-						# 	collision_candidates.append({'pair': (p_a.ID, p_b.ID), 'dist': dist})
-
 						t_poca = -( r_rel_t[0]*v_rel_t[0] + r_rel_t[1]*v_rel_t[1] ) \
 							/ (v_rel_t[0]**2 + v_rel_t[1]**2)
 						collision_candidates.append({'pair': (p_a, p_b), 'crit': t_poca})
@@ -246,10 +230,10 @@ def solve_particle_collision(particles, delta_t):
 
 #######################################################################################
 
-def search_and_perform_particles_collisions(particles, i, j, n_c_x, n_c_y, indices, d_t, lock):
+def search_and_perform_particles_collisions(particles, i, j, n_c_x, n_c_y, indices, d_t):
 	I_k, I_l = max(0,i-1), min(n_c_x-1, i+1)
 	J_k, J_l = max(0,j-1), min(n_c_y-1, j+1)
-	# p_c = [ p for p in cell[I_k:I_l+1][J_k:J_l+1] ]
+
 	p_c = []
 	for k in range(I_k, I_l+1):
 		for l in range(J_k, J_l+1):
@@ -262,9 +246,7 @@ def search_and_perform_particles_collisions(particles, i, j, n_c_x, n_c_y, indic
 			for p in particles[start:end]:
 				p_c.append(p)
 
-	# lock.acquire()
 	solve_particle_collision(p_c, d_t)
-	# lock.release()
 
 
 def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: float, \
@@ -382,8 +364,15 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 					(p.position.y - (y_min + (y_max - y_min)/2) )**2
 				)
 			radii = sorted(radii)
+			particles = sorted(particles, 
+			key = lambda p: sqrt(
+					(p.position.x - (x_min + (x_max - x_min)/2) )**2 + \
+					(p.position.y - (y_min + (y_max - y_min)/2) )**2
+				)
+		)
 
-			with open("density_radial.dat", "a+") as file:
+			with open("density_radial.dat", "a+") as file, \
+				open("velocity_radial.dat", "a+") as file_vr:
 				o_bins = bins_number
 				dr = sqrt(
 					(x_max - (x_min + (x_max - x_min)/2) )**2 + \
@@ -394,11 +383,23 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 				for ir in range(o_bins):
 					r = dr*(ir+1)
 					count = 0
+					vel_rad = 0
 					while i < n and radii[i] <= r:
+						qqqq = sqrt(
+							(particles[i].position.x - (x_min + (x_max - x_min)/2) )**2 + \
+							(particles[i].position.y - (y_min + (y_max - y_min)/2) )**2
+						)
+						assert isclose(qqqq - radii[i], 0.0, \
+							rel_tol=1e-5, abs_tol=1e-5), f"{qqqq - radii[i]}"
+						vel_rad += (particles[i].velocity.x*particles[i].position.x + \
+							particles[i].velocity.y*particles[i].position.y) / \
+							(n*pythagoras(particles[i].position.x, particles[i].position.y))
 						count += 1
 						i += 1
-					file.write(f"{r}\t{count/(pi*dr**2*(2*ir + 1) ) / 1e7}\n")
+					file.write(f"{r}\t{count/(pi*dr**2*(2*ir + 1) ) / n}\n")
+					file_vr.write(f"{r}\t{vel_rad}\n")
 				file.write("\n\n")
+				file_vr.write("\n\n")
 
 		with open("density.dat", "a+") as file1, open("bulk_velocity.dat", "a+") as file2:
 			for i in range(n_c_x):
@@ -416,7 +417,7 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 						for idx in range(start, indices[idx]):
 							v_x += particles[idx].velocity.x
 					
-				file1.write(f"{i*d_x}\t{count/n_c_y}\n")
+				file1.write(f"{i*d_x}\t{count/(0.5*n)*n_c_x}\n")
 				if mode == "SOD":
 					file2.write(f"{i*d_x}\t{v_x / count}\n")
 			file1.write("\n\n")
@@ -466,7 +467,7 @@ def MC(particles, n_c_x: int, n_c_y: int, N_it: float, x_max: float, y_max: floa
 			threads = []
 			for j in range(n_c_y):
 				search_and_perform_particles_collisions(
-					particles, i, j, n_c_x, n_c_y, indices, d_t, None
+					particles, i, j, n_c_x, n_c_y, indices, d_t
 				)
 				# thread = Thread(
 				# 	target=search_and_perform_particles_collisions, 

@@ -4,18 +4,22 @@ from Velocity import Velocity
 from matplotlib import pyplot as plt
 from math import sqrt
 from tools import pythagoras
-
+from numpy.random import normal
 
 class Particle:
 	id = 0
 	def __init__(self, x_min, y_min, x_max, y_max, speed, r_eff, mode):
 		self.position = Position(x_min, y_min, x_max, y_max)
-		if mode == "BASIC" or mode == "SOD":
+		if mode == "BASIC":
 			self.velocity = Velocity(speed)
 
+		elif mode == "SOD":
+			self.velocity = Velocity(speed/sqrt(2), x=normal(), y=normal())
+
 		elif mode == "NOH":
-			vel = (x_min + x_max/2 - self.position.x, 
-				y_min + y_max/2- self.position.y)
+			self.position.x /= 2
+			self.position.y /= 2
+			vel = (-self.position.x, -self.position.y)
 			norm = pythagoras(vel[0], vel[1])
 			self.velocity = Velocity(speed, x=vel[0]/norm, y=vel[1]/norm)
 
