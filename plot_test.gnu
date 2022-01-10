@@ -71,7 +71,8 @@ if (noh == 1){
     set out 'velocity_radial.png'
     set key left bottom
     set grid
-    set yrange [-1.5:0.1]
+    set xrange [0:0.56]
+    set yrange [-0.15:0.05]
     set xlabel "promień"
     set ylabel "prędkość radialna"
     set title "Test Noha - prędkość radialna"
